@@ -12,12 +12,13 @@ const CreateGame = () => {
     useEffect(() => {
         const storedNickname = localStorage.getItem('nickname');
         
-        connectToServer(storedNickname, (code, gameStart) => {
+        connectToServer(storedNickname, (code, token, gameStart) => {
             setRoomCode(code);  // Устанавливаем код комнаты по получению
 
             // Если статус игры true, делаем навигацию на страницу игры
-            if (gameStart) {
-                console.log('Navigating to game with room code: ', code);
+            if (gameStart && token) {
+                console.log('Navigating to game with room code: ', code, "token", token);
+                localStorage.setItem('token', token);
                 navigate(`/game/${code}`);
             }
         });

@@ -19,7 +19,7 @@ const createRoom = (nickname, ws) => {
     
     // Создаем комнату с никнеймом в качестве ключа и пустым объектом в качестве значения
     rooms[roomCode] = {
-        [nickname]: {}
+        [nickname]: { token: null }  // Добавляем поле для токена у игрока
     };
 
     // Сохраняем соединение для каждого игрока
@@ -39,7 +39,7 @@ const joinRoom = (roomCode, nickname, ws) => {
         // Проверяем, не существует ли уже игрока с таким никнеймом в комнате
         if (!rooms[roomCode][nickname]) {
             // Добавляем второго игрока в комнату
-            rooms[roomCode][nickname] = {};
+            rooms[roomCode][nickname] = { token: null };
 
             // Сохраняем соединение для второго игрока
             playerConnections[roomCode][nickname] = ws;
@@ -64,18 +64,29 @@ const joinRoom = (roomCode, nickname, ws) => {
     }
 };
 
+// Генерируем токен
+const generateRandomToken = () => {
+    return Math.random().toString(36).substring(2, 10).toUpperCase();
+};
+
 // Функция для запуска игры, когда в комнате два игрока
 const startGame = (roomCode) => {
     const players = Object.keys(rooms[roomCode]);
+    const token = generateRandomToken();
+    
+    // Добавляем токен каждому игроку в комнате
+    players.forEach(player => {
+        rooms[roomCode][player].token = token;
+    });
     
     players.forEach((player) => {
         const ws = playerConnections[roomCode][player];
         if (ws) {
-            ws.send(JSON.stringify({ type: 'gameStart', message: 'Game is starting!', players, roomCode }));
+            ws.send(JSON.stringify({ type: 'gameStart', message: 'Game is starting!', players, roomCode, token }));
         }
     });
 
-    console.log(`Game started in room ${roomCode} with players: ${players.join(', ')}`);
+    console.log(`Game started in room ${roomCode} with players: ${players.join(', ')}. Token: ${token}`);
 };
 
 server.on('connection', (ws) => {

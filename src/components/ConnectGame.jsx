@@ -20,8 +20,10 @@ const ConnectGame = () => {
         setError(false);
 
         // Подключаемся к серверу и отправляем запрос на присоединение к комнате
-        connectToServer(nickname, (roomCode) => {
-            if (roomCode === code) {
+        connectToServer(nickname, (roomCode, token) => {
+            if (roomCode === code && token) {
+                console.log('token', token);
+                localStorage.setItem('token', token)
                 // Если сервер успешно подключил к комнате, перенаправляем пользователя
                 navigate(`/game/${roomCode}`);
             } else {
