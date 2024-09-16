@@ -19,7 +19,7 @@ const createRoom = (nickname, ws) => {
     
     // Создаем комнату с никнеймом в качестве ключа и пустым объектом в качестве значения
     rooms[roomCode] = {
-        [nickname]: { token: null, board: null }  // Добавляем поле для токена у игрока
+        [nickname]: { token: null, board: null, ready: false }  // Добавляем поле для токена у игрока
     };
 
     // Сохраняем соединение для каждого игрока
@@ -39,7 +39,7 @@ const joinRoom = (roomCode, nickname, ws) => {
         // Проверяем, не существует ли уже игрока с таким никнеймом в комнате
         if (!rooms[roomCode][nickname]) {
             // Добавляем второго игрока в комнату
-            rooms[roomCode][nickname] = { token: null, board: null };
+            rooms[roomCode][nickname] = { token: null, board: null, ready: false };
 
             // Сохраняем соединение для второго игрока
             playerConnections[roomCode][nickname] = ws;
@@ -99,6 +99,32 @@ const updateBoard = (roomCode, nickname, token, board) => {
     return false;
 };
 
+const checkBothPlayersReady = (roomCode) => {
+    const players = rooms[roomCode];
+    
+    if (players) {
+        const allReady = Object.values(players).every(player => player.ready);
+        if (allReady) {
+            console.log(`Both players in room ${roomCode} are ready.`);
+            
+        } else {
+            console.log(`Waiting for both players to be ready in room ${roomCode}.`);
+        }
+    } else {
+        console.log(`Room ${roomCode} not found.`);
+    }
+};
+
+const updatePlayerReadyStatus = (roomCode, nickname, token) => {
+    if (rooms[roomCode] && rooms[roomCode][nickname] && rooms[roomCode][nickname].token === token) {
+        rooms[roomCode][nickname].ready = true;
+        console.log(`${nickname} in room ${roomCode} is now ready.`);
+        checkBothPlayersReady(roomCode);
+        return true;
+    }
+    return false;
+};
+
 server.on('connection', (ws) => {
     console.log('Client connected');
 
@@ -124,6 +150,12 @@ server.on('connection', (ws) => {
             const success = updateBoard(data.code, data.nickname, data.token, data.board);
             if (success) {
                 ws.send(JSON.stringify({ type: 'boardUpdateConfirmation', message: 'Board updated successfully' }));
+                const updateReady = updatePlayerReadyStatus(data.code, data.nickname, data.token);
+                if (updateReady) {
+                    ws.send(JSON.stringify({ type: 'readyConfirmation', message: 'Player is now ready' }));
+                } else {
+                    ws.send(JSON.stringify({ type: 'error', message: 'Failed to set player as ready. Invalid room, nickname, or token.' }));
+                }
             } else {
                 ws.send(JSON.stringify({ type: 'error', message: 'Failed to update board. Invalid room, nickname, or token.' }));
             }
