@@ -1,20 +1,21 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import Cookies from 'js-cookie';
 import NicknameForm from '../modules/NicknameForm';
 
 const MainMenu = () => {
   const [isNicknameSet, setIsNicknameSet] = useState(false);
 
   useEffect(() => {
-    const storedNickname = localStorage.getItem('nickname');
+    const storedNickname = Cookies.get('nickname');
     if (storedNickname) {
       setIsNicknameSet(true);
     }
   }, []);
 
   const handleSaveNickname = (nickname) => {
-    localStorage.setItem('nickname', nickname);
-    console.log('Nickname saved:', nickname);
+    Cookies.set('nickname', nickname, { expires: 7 }); // Устанавливаем куки на 7 дней
+    console.log('Nickname saved in cookies:', nickname);
     setIsNicknameSet(true);
   };
 

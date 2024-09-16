@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { shipsPreset } from '../shipsPreset'; // Убедитесь, что путь к модулю правильный
 import { ControlPanel } from './ControlPanel';
+import { sendBoard } from '../socket';
+import Cookies from 'js-cookie';
 
 // Создаем массивы для осей
 const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
@@ -55,16 +57,7 @@ const ShipPlacement = () => {
     const [ships, setShips] = useState(
         shipsPreset.map(ship => ({ ...ship, placed: 0 }))
     ); // Массив кораблей с состоянием размещения
-    const [nickname, setNickname] = useState(null); // Состояние для никнейма
-
     const maxClicks = selectedShip ? selectedShip.size : 0; // Максимальное количество кликов
-
-    useEffect(() => {
-        const storedNickname = localStorage.getItem('nickname');
-        if (storedNickname) {
-            setNickname(storedNickname);
-        }
-    }, [])
 
     useEffect(() => {
         if (clickCount >= maxClicks && maxClicks > 0) {
@@ -131,10 +124,11 @@ const ShipPlacement = () => {
     };
 
     const handleReadyClick = () => {
-        const shipsData = ships.map(ship => ({
-            name: ship.name,
-            remaining: ship.quantity - ship.remaining
-        }));
+        const nickname = Cookies.get('nickname');
+        const token = Cookies.get('token');
+        const code = 12;
+        console.log('sent ships:', field)
+        sendBoard(code, nickname, token, field)
     };
 
     return (

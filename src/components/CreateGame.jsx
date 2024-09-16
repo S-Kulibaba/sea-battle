@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { connectToServer  } from "../socket";
+import Cookies from "js-cookie";
 
 const CreateGame = () => {
     const [copied, setCopied] = useState(false);
@@ -10,7 +11,7 @@ const CreateGame = () => {
 
     // Подключение к серверу при монтировании компонента
     useEffect(() => {
-        const storedNickname = localStorage.getItem('nickname');
+        const storedNickname = Cookies.get('nickname');
         
         connectToServer(storedNickname, (code, token, gameStart) => {
             setRoomCode(code);  // Устанавливаем код комнаты по получению
@@ -18,7 +19,7 @@ const CreateGame = () => {
             // Если статус игры true, делаем навигацию на страницу игры
             if (gameStart && token) {
                 console.log('Navigating to game with room code: ', code, "token", token);
-                localStorage.setItem('token', token);
+                Cookies.set('token', token, { expires: 7 }); // Устанавливаем куки на 7 дней
                 navigate(`/game/${code}`);
             }
         });

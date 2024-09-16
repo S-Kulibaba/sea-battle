@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { connectToServer, closeConnection } from "../socket";
+import Cookies from "js-cookie";
 
 const ConnectGame = () => {
     const [loading, setLoading] = useState(false);
@@ -9,7 +10,7 @@ const ConnectGame = () => {
     const navigate = useNavigate();
 
     const handleConnectClick = () => {
-        const nickname = localStorage.getItem('nickname');  // Предположим, что никнейм уже сохранен в локальном хранилище
+        const nickname = Cookies.get('nickname');  // Предположим, что никнейм уже сохранен в локальном хранилище
 
         if (code.trim() === "" || !nickname) {
             setError(true);
@@ -23,7 +24,7 @@ const ConnectGame = () => {
         connectToServer(nickname, (roomCode, token) => {
             if (roomCode === code && token) {
                 console.log('token', token);
-                localStorage.setItem('token', token)
+                Cookies.set('token', token, { expires: 7 }); // Устанавливаем куки на 7 дней
                 // Если сервер успешно подключил к комнате, перенаправляем пользователя
                 navigate(`/game/${roomCode}`);
             } else {
