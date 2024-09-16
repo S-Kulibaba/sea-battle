@@ -28,16 +28,26 @@ export const connectToServer = (nickname, onRoomCodeReceived, roomCode = null) =
 
         socket.onmessage = (message) => {
             const data = JSON.parse(message.data);
-            if (data.type === 'roomCode') {
-                onRoomCodeReceived(data.roomCode, false);
-            } else if (data.type === 'joined' && data.success) {
-                onRoomCodeReceived(data.roomCode, data.token);
-            } else if (data.type === 'error') {
-                console.error('Error from server: ', data.message);
-                onRoomCodeReceived(null);
-            } else if (data.type === 'gameStart') {
-                onRoomCodeReceived(data.roomCode, data.token, true);
+            switch (data.type) {
+                case 'roomCode':
+                    onRoomCodeReceived(data.roomCode, false);
+                    break;
+                case 'joined':
+                    if (data.success) {
+                        onRoomCodeReceived(data.roomCode, data.token);
+                    }
+                    break;
+                case 'error':
+                    console.error('Error from server: ', data.message);
+                    onRoomCodeReceived(null);
+                    break;
+                case 'gameStart':
+                    onRoomCodeReceived(data.roomCode, data.token, true);
+                    break;
+                default:
+                    console.warn('Unknown data type: ', data.type);
             }
+            
             
             if (onMessageCallback) {
                 onMessageCallback(data);
