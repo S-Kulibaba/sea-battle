@@ -19,7 +19,7 @@ const createRoom = (nickname, ws) => {
     
     // Создаем комнату с никнеймом в качестве ключа и пустым объектом в качестве значения
     rooms[roomCode] = {
-        [nickname]: { token: null }  // Добавляем поле для токена у игрока
+        [nickname]: { token: null, board: null }  // Добавляем поле для токена у игрока
     };
 
     // Сохраняем соединение для каждого игрока
@@ -39,7 +39,7 @@ const joinRoom = (roomCode, nickname, ws) => {
         // Проверяем, не существует ли уже игрока с таким никнеймом в комнате
         if (!rooms[roomCode][nickname]) {
             // Добавляем второго игрока в комнату
-            rooms[roomCode][nickname] = { token: null };
+            rooms[roomCode][nickname] = { token: null, board: null };
 
             // Сохраняем соединение для второго игрока
             playerConnections[roomCode][nickname] = ws;
@@ -89,6 +89,16 @@ const startGame = (roomCode) => {
     console.log(`Game started in room ${roomCode} with players: ${players.join(', ')}. Token: ${token}`);
 };
 
+const updateBoard = (roomCode, nickname, token, board) => {
+    if (rooms[roomCode] && rooms[roomCode][nickname] && rooms[roomCode][nickname].token === token) {
+        rooms[roomCode][nickname].board = board;
+        console.log(`Updated board for ${nickname} in room ${roomCode}:`);
+        console.log(JSON.stringify(rooms[roomCode], null, 2));
+        return true;
+    }
+    return false;
+};
+
 server.on('connection', (ws) => {
     console.log('Client connected');
 
@@ -109,6 +119,14 @@ server.on('connection', (ws) => {
             
             // Подключаем игрока к существующей комнате
             joinRoom(data.roomCode, data.nickname, ws);
+        } else if(data.type === 'boardUpdate') {
+            console.log(`Board update received from ${data.nickname} in room ${data.code}`);
+            const success = updateBoard(data.code, data.nickname, data.token, data.board);
+            if (success) {
+                ws.send(JSON.stringify({ type: 'boardUpdateConfirmation', message: 'Board updated successfully' }));
+            } else {
+                ws.send(JSON.stringify({ type: 'error', message: 'Failed to update board. Invalid room, nickname, or token.' }));
+            }
         }
     });
 

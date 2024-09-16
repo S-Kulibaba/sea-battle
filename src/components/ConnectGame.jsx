@@ -25,6 +25,7 @@ const ConnectGame = () => {
             if (roomCode === code && token) {
                 console.log('token', token);
                 Cookies.set('token', token, { expires: 7 }); // Устанавливаем куки на 7 дней
+                Cookies.set('roomCode', roomCode, { expires: 7 });
                 // Если сервер успешно подключил к комнате, перенаправляем пользователя
                 navigate(`/game/${roomCode}`);
             } else {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { shipsPreset } from '../shipsPreset';
 
-export function ControlPanel({ setSelectedShip, ships, setShips, onReadyClick }) {
+export function ControlPanel({ setSelectedShip, onReadyClick }) {
     const [remainingShips, setRemainingShips] = useState(
         shipsPreset.map(ship => ({ ...ship, remaining: ship.quantity }))
     );

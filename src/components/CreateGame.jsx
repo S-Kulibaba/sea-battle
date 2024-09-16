@@ -20,6 +20,7 @@ const CreateGame = () => {
             if (gameStart && token) {
                 console.log('Navigating to game with room code: ', code, "token", token);
                 Cookies.set('token', token, { expires: 7 }); // Устанавливаем куки на 7 дней
+                Cookies.set('roomCode', code, { expires: 7 });
                 navigate(`/game/${code}`);
             }
         });

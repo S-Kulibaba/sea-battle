@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { shipsPreset } from '../shipsPreset'; // Убедитесь, что путь к модулю правильный
 import { ControlPanel } from './ControlPanel';
-import { sendBoard } from '../socket';
+import { sendMessage } from '../socket';
 import Cookies from 'js-cookie';
 
 // Создаем массивы для осей
@@ -126,9 +126,15 @@ const ShipPlacement = () => {
     const handleReadyClick = () => {
         const nickname = Cookies.get('nickname');
         const token = Cookies.get('token');
-        const code = 12;
-        console.log('sent ships:', field)
-        sendBoard(code, nickname, token, field)
+        const code = Cookies.get('roomCode');
+        console.log('sent ships:', field);
+        sendMessage({
+            type: 'boardUpdate',
+            code,
+            nickname,
+            token,
+            board: field
+        });
     };
 
     return (
