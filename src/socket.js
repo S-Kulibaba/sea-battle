@@ -44,6 +44,12 @@ export const connectToServer = (nickname, onRoomCodeReceived, roomCode = null) =
                 case 'gameStart':
                     onRoomCodeReceived(data.roomCode, data.token, true);
                     break;
+                case 'bothPlayersReady':  // Новый случай для обработки готовности обоих игроков
+                    console.log('Both players are ready');
+                    if (onMessageCallback) {
+                        onMessageCallback(data);
+                    }
+                    break;
                 default:
                     console.warn('Unknown data type: ', data.type);
             }

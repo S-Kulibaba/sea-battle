@@ -107,6 +107,12 @@ const checkBothPlayersReady = (roomCode) => {
         if (allReady) {
             console.log(`Both players in room ${roomCode} are ready.`);
             
+            Object.keys(players).forEach(player => {
+                const ws = playerConnections[roomCode][player];
+                if (ws) {
+                    ws.send(JSON.stringify({ type: 'bothPlayersReady', message: 'Both players are ready.' }));
+                }
+            });
         } else {
             console.log(`Waiting for both players to be ready in room ${roomCode}.`);
         }
