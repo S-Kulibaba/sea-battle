@@ -155,7 +155,7 @@ server.on('connection', (ws) => {
     ws.on('message', (message) => {
         const data = JSON.parse(message);
 
-        if (data.type === 'nickname') {
+        if (data.type === 'createRoom') {
             console.log(`Nickname received: ${data.nickname}`);
             
             // Создаем новую комнату и получаем ее код
@@ -185,11 +185,32 @@ server.on('connection', (ws) => {
         } else if (data.type === 'getBoard') {
             console.log(`Board request received from ${data.nickname} in room ${data.code}`);
             const board = getBoard(data.code, data.nickname, data.token);
-            const nickname = data.nickname
+            const nickname = data.nickname;
             if (board) {
                 ws.send(JSON.stringify({ type: 'boardData', nickname, board }));
             } else {
                 ws.send(JSON.stringify({ type: 'error', message: 'Failed to retrieve board. Invalid room, nickname, or token.' }));
+            }
+        } else if (data.type === 'attemptReconnect') {
+            console.log(`Reconnect attempt from ${data.nickname} in room ${data.roomCode}`);
+            const roomCode = data.roomCode;
+            const nickname = data.nickname;
+            const token = data.token;
+
+            // Проверяем, существует ли комната, никнейм игрока и совпадает ли токен
+            if (rooms[roomCode] && rooms[roomCode][nickname] && rooms[roomCode][nickname].token === token) {
+                console.log(`Reconnect successful for ${nickname} in room ${roomCode}`);
+
+                // Переподключаем игрока и сохраняем новое WebSocket соединение
+                playerConnections[roomCode][nickname] = ws;
+                
+                // Отправляем сообщение о успешном переподключении
+                ws.send(JSON.stringify({ type: 'reconnectSuccess', message: 'Reconnect successful', roomCode, nickname }));
+            } else {
+                console.error(`Reconnect failed for ${nickname} in room ${roomCode}. Invalid room, nickname, or token.`);
+                
+                // Отправляем сообщение об ошибке
+                ws.send(JSON.stringify({ type: 'error', message: 'Reconnect failed. Invalid room, nickname, or token.' }));
             }
         }
     });
@@ -198,5 +219,6 @@ server.on('connection', (ws) => {
         console.log('Client disconnected');
     });
 });
+
 
 console.log('WebSocket server is running on ws://localhost:8080');

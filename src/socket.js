@@ -1,5 +1,6 @@
 let socket;
 let onMessageCallback;
+let onDisconnectCallback;
 let isConnected = false;
 let messageQueue = [];
 
@@ -53,6 +54,10 @@ export const sendMessage = (message) => {
 
 export const setOnMessageCallback = (callback) => {
     onMessageCallback = callback;
+};
+
+export const setOnDisconnectCallback = (callback) => {
+    onDisconnectCallback = callback;
 };
 
 export const closeConnection = () => {
