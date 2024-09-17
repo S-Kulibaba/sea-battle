@@ -50,6 +50,11 @@ export const connectToServer = (nickname, onRoomCodeReceived, roomCode = null) =
                         onMessageCallback(data);
                     }
                     break;
+                case 'boardData':
+                    if (onMessageCallback) {
+                        onMessageCallback(data);
+                    }
+                    break;
                 default:
                     console.warn('Unknown data type: ', data.type);
             }

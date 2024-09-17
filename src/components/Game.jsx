@@ -5,14 +5,20 @@ import { setOnMessageCallback } from "../socket";
 
 const Game = () => {
   // Состояние для флага отображения компонента размещения кораблей
-  const [showShipPlacement, setShowShipPlacement] = useState(true); // Установите начальное значение в true или false в зависимости от ваших требований
-  const [showBattle, setShowBattle] = useState(false)
+  const [showShipPlacement, setShowShipPlacement] = useState(true);
+  const [showBattle, setShowBattle] = useState(false);
+  
+  // Состояние для сохранения никнеймов игроков
+  const [playerNicknames, setPlayerNicknames] = useState([]);
 
   useEffect(() => {
     // Устанавливаем callback для получения сообщений
     setOnMessageCallback((data) => {
       if (data.type === 'bothPlayersReady') {
-        // Скрываем компонент размещения кораблей, когда оба игрока готовы
+        // Сохраняем никнеймы игроков
+        setPlayerNicknames(data.players);
+        
+        // Скрываем компонент размещения кораблей и отображаем компонент боя
         setShowShipPlacement(false);
         setShowBattle(true);
       }
@@ -22,7 +28,7 @@ const Game = () => {
   return (
     <div className="h-screen w-screen flex items-center justify-center">
       {showShipPlacement && <ShipPlacement />}
-      {showBattle && <BattleModule/>}
+      {showBattle && <BattleModule players={playerNicknames} />}  {/* Передаем никнеймы игроков в BattleModule */}
     </div>
   );
 };

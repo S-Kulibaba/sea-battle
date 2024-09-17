@@ -107,10 +107,17 @@ const checkBothPlayersReady = (roomCode) => {
         if (allReady) {
             console.log(`Both players in room ${roomCode} are ready.`);
             
+            const playerNicknames = Object.keys(players);  // Получаем ники игроков
+
             Object.keys(players).forEach(player => {
                 const ws = playerConnections[roomCode][player];
                 if (ws) {
-                    ws.send(JSON.stringify({ type: 'bothPlayersReady', message: 'Both players are ready.' }));
+                    ws.send(JSON.stringify({
+                        type: 'bothPlayersReady',
+                        message: 'Both players are ready.',
+                        roomCode: roomCode,  // Отправляем номер комнаты
+                        players: playerNicknames  // Отправляем список никнеймов игроков
+                    }));
                 }
             });
         } else {
@@ -129,6 +136,16 @@ const updatePlayerReadyStatus = (roomCode, nickname, token) => {
         return true;
     }
     return false;
+};
+
+// Добавим обработку запроса доски
+const getBoard = (roomCode, nickname, token) => {
+    if (rooms[roomCode] && rooms[roomCode][nickname] && rooms[roomCode][nickname].token === token) {
+        const board = rooms[roomCode][nickname].board;
+        console.log(`Sending board for ${nickname} in room ${roomCode}:`);
+        return board;
+    }
+    return null;
 };
 
 server.on('connection', (ws) => {
@@ -151,7 +168,7 @@ server.on('connection', (ws) => {
             
             // Подключаем игрока к существующей комнате
             joinRoom(data.roomCode, data.nickname, ws);
-        } else if(data.type === 'boardUpdate') {
+        } else if (data.type === 'boardUpdate') {
             console.log(`Board update received from ${data.nickname} in room ${data.code}`);
             const success = updateBoard(data.code, data.nickname, data.token, data.board);
             if (success) {
@@ -164,6 +181,15 @@ server.on('connection', (ws) => {
                 }
             } else {
                 ws.send(JSON.stringify({ type: 'error', message: 'Failed to update board. Invalid room, nickname, or token.' }));
+            }
+        } else if (data.type === 'getBoard') {
+            console.log(`Board request received from ${data.nickname} in room ${data.code}`);
+            const board = getBoard(data.code, data.nickname, data.token);
+            const nickname = data.nickname
+            if (board) {
+                ws.send(JSON.stringify({ type: 'boardData', nickname, board }));
+            } else {
+                ws.send(JSON.stringify({ type: 'error', message: 'Failed to retrieve board. Invalid room, nickname, or token.' }));
             }
         }
     });
