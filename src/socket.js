@@ -3,7 +3,7 @@ let onMessageCallback;
 let isConnected = false;
 let messageQueue = [];
 
-export const connectToServer = (nickname, onRoomCodeReceived, roomCode = null) => {
+export const connectToServer = () => {
     return new Promise((resolve, reject) => {
         socket = new WebSocket('ws://localhost:8080');
         
@@ -11,12 +11,6 @@ export const connectToServer = (nickname, onRoomCodeReceived, roomCode = null) =
             console.log('Connected to the server');
             isConnected = true;
             
-            if (roomCode) {
-                sendMessage({ type: 'joinRoom', nickname, roomCode });
-            } else {
-                sendMessage({ type: 'nickname', nickname });
-            }
-
             // Отправляем сообщения из очереди
             while (messageQueue.length > 0) {
                 const message = messageQueue.shift();
@@ -28,42 +22,9 @@ export const connectToServer = (nickname, onRoomCodeReceived, roomCode = null) =
 
         socket.onmessage = (message) => {
             const data = JSON.parse(message.data);
-            switch (data.type) {
-                case 'roomCode':
-                    onRoomCodeReceived(data.roomCode, false);
-                    break;
-                case 'joined':
-                    if (data.success) {
-                        onRoomCodeReceived(data.roomCode, data.token);
-                    }
-                    break;
-                case 'error':
-                    console.error('Error from server: ', data.message);
-                    onRoomCodeReceived(null);
-                    break;
-                case 'gameStart':
-                    onRoomCodeReceived(data.roomCode, data.token, true);
-                    break;
-                case 'bothPlayersReady':  // Новый случай для обработки готовности обоих игроков
-                    console.log('Both players are ready');
-                    if (onMessageCallback) {
-                        onMessageCallback(data);
-                    }
-                    break;
-                case 'boardData':
-                    if (onMessageCallback) {
-                        onMessageCallback(data);
-                    }
-                    break;
-                default:
-                    console.warn('Unknown data type: ', data.type);
-            }
-            
-            
             if (onMessageCallback) {
                 onMessageCallback(data);
             }
-
             console.log('Message from server: ', message.data);
         };
 

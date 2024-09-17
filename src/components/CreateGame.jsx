@@ -1,29 +1,42 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { connectToServer  } from "../socket";
+import { connectToServer, sendMessage, setOnMessageCallback } from "../socket";
 import Cookies from "js-cookie";
 
 const CreateGame = () => {
     const [copied, setCopied] = useState(false);
     const [roomCode, setRoomCode] = useState('');  // Изначально код пустой
-    const gameStart = false;  // Статус игры
     const navigate = useNavigate();
 
     // Подключение к серверу при монтировании компонента
     useEffect(() => {
         const storedNickname = Cookies.get('nickname');
         
-        connectToServer(storedNickname, (code, token, gameStart) => {
-            setRoomCode(code);  // Устанавливаем код комнаты по получению
+        connectToServer()
+            .then(() => {
+                // После подключения отправляем запрос на создание комнаты
+                sendMessage({ type: 'createRoom', nickname: storedNickname });
+            })
+            .catch((error) => {
+                console.error("Failed to connect to server:", error);
+            });
 
-            // Если статус игры true, делаем навигацию на страницу игры
-            if (gameStart && token) {
-                console.log('Navigating to game with room code: ', code, "token", token);
-                Cookies.set('token', token, { expires: 7 }); // Устанавливаем куки на 7 дней
-                Cookies.set('roomCode', code, { expires: 7 });
-                navigate(`/game/${code}`);
+        // Обработка входящих сообщений о коде комнаты и статусе игры
+        const handleMessage = (data) => {
+            if (data.type === 'roomCode') {
+                setRoomCode(data.roomCode);  // Устанавливаем код комнаты по получению
             }
-        });
+
+            if (data.type === 'gameStart' && data.token) {
+                console.log('Navigating to game with room code: ', data.roomCode, "token", data.token);
+                Cookies.set('token', data.token, { expires: 7 }); // Устанавливаем куки на 7 дней
+                Cookies.set('roomCode', data.roomCode, { expires: 7 });
+                navigate(`/game/${data.roomCode}`);
+            }
+        };
+
+        // Устанавливаем обработчик сообщений
+        setOnMessageCallback(handleMessage);
 
     }, [navigate]);
 

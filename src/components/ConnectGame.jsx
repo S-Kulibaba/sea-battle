@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { connectToServer, closeConnection } from "../socket";
+import { connectToServer, sendMessage, setOnMessageCallback } from "../socket";
 import Cookies from "js-cookie";
 
 const ConnectGame = () => {
@@ -9,8 +9,32 @@ const ConnectGame = () => {
     const [code, setCode] = useState("");
     const navigate = useNavigate();
 
+    useEffect(() => {
+        // Устанавливаем обработчик сообщений с сервера
+        const handleMessage = (data) => {
+            if (data.type === 'gameStart' && data.token) {
+                // Сохраняем токен и код комнаты в куки
+                Cookies.set('token', data.token, { expires: 7 });
+                Cookies.set('roomCode', data.roomCode, { expires: 7 });
+                // Перенаправляем на страницу игры
+                navigate(`/game/${data.roomCode}`);
+            } else {
+                // В случае ошибки или другого сообщения
+                setLoading(false);
+                setError(true);
+            }
+        };
+
+        setOnMessageCallback(handleMessage);
+
+        return () => {
+            // Очищаем обработчик сообщений при размонтировании компонента
+            setOnMessageCallback(null);
+        };
+    }, [navigate]);
+
     const handleConnectClick = () => {
-        const nickname = Cookies.get('nickname');  // Предположим, что никнейм уже сохранен в локальном хранилище
+        const nickname = Cookies.get('nickname');  // Предположим, что никнейм уже сохранен в куках
 
         if (code.trim() === "" || !nickname) {
             setError(true);
@@ -20,20 +44,16 @@ const ConnectGame = () => {
         setLoading(true);
         setError(false);
 
-        // Подключаемся к серверу и отправляем запрос на присоединение к комнате
-        connectToServer(nickname, (roomCode, token) => {
-            if (roomCode === code && token) {
-                console.log('token', token);
-                Cookies.set('token', token, { expires: 7 }); // Устанавливаем куки на 7 дней
-                Cookies.set('roomCode', roomCode, { expires: 7 });
-                // Если сервер успешно подключил к комнате, перенаправляем пользователя
-                navigate(`/game/${roomCode}`);
-            } else {
-                // Если подключение не удалось, выводим ошибку
+        // Подключаемся к серверу
+        connectToServer()
+            .then(() => {
+                // После успешного подключения отправляем запрос на присоединение к комнате
+                sendMessage({ type: 'joinRoom', nickname, roomCode: code });
+            })
+            .catch(() => {
                 setLoading(false);
                 setError(true);
-            }
-        }, code);  // Передаем код комнаты в функцию подключения
+            });
     };
 
     const goBack = () => {
