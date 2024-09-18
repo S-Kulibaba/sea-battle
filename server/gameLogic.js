@@ -50,6 +50,20 @@ const generateRandomToken = () => {
     return Math.random().toString(36).substring(2, 10).toUpperCase();
 };
 
+// Функция для обнаружения кораблей
+
+const detectShips = (board) => {
+    const ships = [];
+    for (let i = 0; i < board.length; i++) {
+        for (let j = 0; j < board[i].length; j++) {
+            if (board[i][j] === 1) {
+                ships.push([i, j]);
+            }
+        }
+    }
+    return ships;
+};
+
 // Функция для запуска игры, когда в комнате два игрока
 const startGame = (roomCode) => {
     const players = Object.keys(rooms[roomCode]);
@@ -116,6 +130,8 @@ const getBoard = (roomCode, nickname, token) => {
     if (rooms[roomCode] && rooms[roomCode][nickname] && rooms[roomCode][nickname].token === token) {
         const board = rooms[roomCode][nickname].board;
         console.log(`Sending board for ${nickname} in room ${roomCode}:`);
+        const ships = detectShips(board);
+        console.log(`Detected ships for ${nickname}:`, ships);
         return board;
     }
     return null;
