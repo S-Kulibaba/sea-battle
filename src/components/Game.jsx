@@ -6,26 +6,24 @@ import { useParams } from 'react-router-dom';
 import Cookies from 'js-cookie';
 
 const Game = () => {
-  const { code } = useParams();  // Код комнаты из URL
+  const { code } = useParams();
   const [roomCode, setRoomCode] = useState(code || null);
   const [isConnected, setIsConnected] = useState(getConnectionStatus());
-  const [showShipPlacement, setShowShipPlacement] = useState(true);
-  const [showBattle, setShowBattle] = useState(false);
+  const [gameStage, setGameStage] = useState('placing');
   const [playerNicknames, setPlayerNicknames] = useState([]);
   const [connectionError, setConnectionError] = useState(null);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
 
-  const nickname = Cookies.get('nickname');  // Получаем никнейм из куки
-  const token = Cookies.get('token');  // Получаем токен из куки
+  const nickname = Cookies.get('nickname');
+  const token = Cookies.get('token');
 
   useEffect(() => {
     const maxReconnectAttempts = 5;
-    const reconnectDelay = 2000;  // Интервал между попытками переподключения (2 секунды)
+    const reconnectDelay = 2000;
 
     const setupConnection = async () => {
       try {
-        await connectToServer();  // Подключаемся к серверу
-        // После успешного подключения отправляем сообщение на реконнект
+        await connectToServer();
         sendMessage({
           type: 'attemptReconnect',
           nickname,
@@ -34,14 +32,22 @@ const Game = () => {
         });
         setIsConnected(true);
         setConnectionError(null);
-        setReconnectAttempts(0);  // Сброс количества попыток после успешного подключения
+        setReconnectAttempts(0);
+        
+        // Запрос текущей стадии игры после успешного подключения
+        sendMessage({
+          type: 'getGameStage',
+          roomCode: code,
+          nickname,
+          token,
+        });
       } catch (error) {
         console.error('Connection failed:', error);
         setConnectionError('Failed to connect to the server. Retrying...');
         if (reconnectAttempts < maxReconnectAttempts) {
           setTimeout(() => {
             setReconnectAttempts(prev => prev + 1);
-            setupConnection();  // Повторная попытка подключения
+            setupConnection();
           }, reconnectDelay);
         } else {
           setConnectionError('Unable to reconnect after multiple attempts.');
@@ -56,10 +62,11 @@ const Game = () => {
     setOnMessageCallback((data) => {
       if (data.type === 'bothPlayersReady') {
         setPlayerNicknames(data.players);
-        setShowShipPlacement(false);
-        setShowBattle(true);
+        setGameStage('battle');
+      } else if (data.type === 'gameStageData') {
+        setGameStage(data.gameStage);
       } else if (data.type === 'error') {
-        setConnectionError(data.message);  // Устанавливаем сообщение об ошибке
+        setConnectionError(data.message);
       }
     });
 
@@ -67,7 +74,7 @@ const Game = () => {
       console.warn('Connection lost. Attempting to reconnect...');
       setIsConnected(false);
       setConnectionError('Connection lost. Reconnecting...');
-      setupConnection();  // Попытка переподключения при потере связи
+      setupConnection();
     });
 
     return () => {
@@ -79,10 +86,10 @@ const Game = () => {
   }, [isConnected, reconnectAttempts, code, nickname, token]);
 
   return (
-    <div className="h-screen w-screen flex items-center justify-center">
-      {connectionError && <p className="text-red-500">{connectionError}</p>}
-      {showShipPlacement && !connectionError && <ShipPlacement />}
-      {showBattle && <BattleModule players={playerNicknames} />}
+    <div className=' h-screen w-screen flex items-center justify-center'>
+      {connectionError && <div className="error">{connectionError}</div>}
+      {gameStage === 'placing' && !connectionError && <ShipPlacement />}
+      {gameStage === 'battle' && <BattleModule />}
     </div>
   );
 };

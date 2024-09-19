@@ -15,7 +15,7 @@ const generateRoomCode = () => {
 const createRoom = (nickname, ws) => {
     const roomCode = generateRoomCode();
     rooms[roomCode] = {
-        [nickname]: { token: null, board: null, ready: false }
+        [nickname]: { token: null, board: null, ready: false, gameStage: 'placing' }
     };
     playerConnections[roomCode] = {
         [nickname]: ws
@@ -29,7 +29,7 @@ const createRoom = (nickname, ws) => {
 const joinRoom = (roomCode, nickname, ws) => {
     if (rooms[roomCode]) {
         if (!rooms[roomCode][nickname]) {
-            rooms[roomCode][nickname] = { token: null, board: null, ready: false };
+            rooms[roomCode][nickname] = { token: null, board: null, ready: false, gameStage: 'placing' };
             playerConnections[roomCode][nickname] = ws;
             console.log(`${nickname} joined room ${roomCode}`);
             console.log(rooms);
@@ -98,13 +98,15 @@ const checkBothPlayersReady = (roomCode) => {
             console.log(`Both players in room ${roomCode} are ready.`);
             const playerNicknames = Object.keys(players);
             Object.keys(players).forEach(player => {
+                players[player].gameStage = 'battle';
                 const ws = playerConnections[roomCode][player];
                 if (ws) {
                     ws.send(JSON.stringify({
                         type: 'bothPlayersReady',
                         message: 'Both players are ready.',
                         roomCode: roomCode,
-                        players: playerNicknames
+                        players: playerNicknames,
+                        gameStage: 'battle'
                     }));
                 }
             });
@@ -129,13 +131,24 @@ const updatePlayerReadyStatus = (roomCode, nickname, token) => {
 const getBoard = (roomCode, nickname, token) => {
     if (rooms[roomCode] && rooms[roomCode][nickname] && rooms[roomCode][nickname].token === token) {
         const board = rooms[roomCode][nickname].board;
+        
+        // Проверяем, есть ли доска, и обновляем состояние gameStage на 'battle'
+        if (board) {
+            rooms[roomCode][nickname].gameStage = 'battle';
+            console.log(`Game stage for ${nickname} in room ${roomCode} set to`);
+        }
+        
         console.log(`Sending board for ${nickname} in room ${roomCode}:`);
         const ships = detectShips(board);
         console.log(`Detected ships for ${nickname}:`, ships);
+        
+        // Возвращаем доску и текущее состояние gameStage
+        // return { board, gameStage: rooms[roomCode][nickname].gameStage };
         return board;
     }
     return null;
 };
+
 
 const attemptReconnect = (roomCode, nickname, token, ws) => {
     if (rooms[roomCode] && rooms[roomCode][nickname] && rooms[roomCode][nickname].token === token) {
@@ -147,11 +160,31 @@ const attemptReconnect = (roomCode, nickname, token, ws) => {
     return false;
 };
 
+const getGameStage = (roomCode, nickname) => {
+    if (rooms[roomCode] && rooms[roomCode][nickname]) {
+        const stage = rooms[roomCode][nickname].gameStage;
+        console.log(stage);
+        return stage;
+    } else {
+        console.error(`Room ${roomCode} or player ${nickname} not found`);
+        return null;
+    }
+}
+
+const getPlayers = (roomCode) => {
+    if (rooms[roomCode]) {
+        return Object.keys(rooms[roomCode]);
+    }
+    return null;
+};
+
 module.exports = {
     createRoom,
     joinRoom,
     updateBoard,
     updatePlayerReadyStatus,
     getBoard,
-    attemptReconnect
+    attemptReconnect,
+    getGameStage,
+    getPlayers
 };

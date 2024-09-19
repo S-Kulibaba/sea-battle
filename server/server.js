@@ -47,6 +47,44 @@ server.on('connection', (ws) => {
             } else {
                 ws.send(JSON.stringify({ type: 'error', message: 'Reconnect failed. Invalid room, nickname, or token.' }));
             }
+        } else if (data.type === 'getGameStage') {
+            console.log(`Game stage request from ${data.nickname} in room ${data.roomCode}`);
+            const gameStage = gameLogic.getGameStage(data.roomCode, data.nickname);
+            if (gameStage) {
+                ws.send(JSON.stringify({ type: 'gameStageData', gameStage }));
+            } else {
+                ws.send(JSON.stringify({ type: 'error', message: 'Failed to retrieve game stage. Invalid room or nickname.' }));
+            }
+        } else if (data.type === 'getPlayers') {
+            console.log(`Players request from ${data.nickname} in room ${data.roomCode}`);
+            const players = gameLogic.getPlayers(data.roomCode);
+            if (players) {
+                ws.send(JSON.stringify({ type: 'playersData', players }));
+            } else {
+                ws.send(JSON.stringify({ type: 'error', message: 'Failed to retrieve players. Invalid room.' }));
+            } 
+        }  else if (data.type === 'startGame') {
+            console.log(`Start game request from ${data.nickname} in room ${data.roomCode}`);
+            const firstPlayer = gameLogic.determineFirstTurn(data.roomCode);
+            broadcastToRoom(data.roomCode, { type: 'gameStarted', firstPlayer });
+        }
+        else if (data.type === 'makeShot') {
+            console.log(`Shot made by ${data.nickname} in room ${data.roomCode} at (${data.x}, ${data.y})`);
+            const result = gameLogic.makeShot(data.roomCode, data.nickname, data.x, data.y);
+            if (result.success) {
+                const gameState = gameLogic.getGameState(data.roomCode);
+                broadcastToRoom(data.roomCode, { 
+                    type: 'shotResult', 
+                    shooter: data.nickname,
+                    x: data.x,
+                    y: data.y,
+                    hit: result.hit,
+                    currentTurn: result.currentTurn,
+                    gameState
+                });
+            } else {
+                ws.send(JSON.stringify({ type: 'error', message: result.message }));
+            }
         }
     });
 

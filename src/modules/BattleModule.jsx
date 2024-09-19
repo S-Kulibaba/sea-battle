@@ -43,42 +43,48 @@ const GameBoard = ({ nickname, board, isOpponent }) => {
     );
 };
 
-const BattleModule = ({ players }) => {
+const BattleModule = () => {
     const [playerNicknames, setPlayerNicknames] = useState({ current: '', opponent: '' });
     const [currentPlayerBoard, setCurrentPlayerBoard] = useState(null);
     const savedNickname = Cookies.get('nickname');
+    const roomCode = Cookies.get('roomCode');
 
     const requestBoard = (nickname) => {
         const token = Cookies.get('token');
-        const code = Cookies.get('roomCode');
     
-        if (token && code) {
+        if (token && roomCode) {
             sendMessage({
                 type: 'getBoard',
-                code,
+                code: roomCode,
                 nickname,
                 token,
             });
             console.log(`Requesting board for player: ${nickname}`);
         } else {
-            console.error('No token found in cookies');
+            console.error('No token or room code found in cookies');
         }
     };
 
     useEffect(() => {
-        if (players && players.length === 2) {
-            const opponentNickname = players.find(player => player !== savedNickname);
-            setPlayerNicknames({ current: savedNickname, opponent: opponentNickname });
-            requestBoard(savedNickname);
-        }
+        // Запрашиваем список игроков в комнате
+        sendMessage({
+            type: 'getPlayers',
+            roomCode,
+            nickname: savedNickname,
+        });
 
         setOnMessageCallback(handleMessage);
 
         return () => setOnMessageCallback(null);
-    }, [players, savedNickname]);
+    }, [savedNickname, roomCode]);
 
     const handleMessage = (data) => {
-        if (data.type === 'boardData' && data.nickname === savedNickname) {
+        if (data.type === 'playersData') {
+            const players = data.players;
+            const opponentNickname = players.find(player => player !== savedNickname);
+            setPlayerNicknames({ current: savedNickname, opponent: opponentNickname });
+            requestBoard(savedNickname);
+        } else if (data.type === 'boardData' && data.nickname === savedNickname) {
             setCurrentPlayerBoard(data.board);
         }
     };
