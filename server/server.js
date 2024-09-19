@@ -68,24 +68,6 @@ server.on('connection', (ws) => {
             const firstPlayer = gameLogic.determineFirstTurn(data.roomCode);
             broadcastToRoom(data.roomCode, { type: 'gameStarted', firstPlayer });
         }
-        else if (data.type === 'makeShot') {
-            console.log(`Shot made by ${data.nickname} in room ${data.roomCode} at (${data.x}, ${data.y})`);
-            const result = gameLogic.makeShot(data.roomCode, data.nickname, data.x, data.y);
-            if (result.success) {
-                const gameState = gameLogic.getGameState(data.roomCode);
-                broadcastToRoom(data.roomCode, { 
-                    type: 'shotResult', 
-                    shooter: data.nickname,
-                    x: data.x,
-                    y: data.y,
-                    hit: result.hit,
-                    currentTurn: result.currentTurn,
-                    gameState
-                });
-            } else {
-                ws.send(JSON.stringify({ type: 'error', message: result.message }));
-            }
-        }
     });
 
     ws.on('close', () => {
