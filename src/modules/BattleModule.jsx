@@ -55,7 +55,7 @@ const GameBoard = ({ nickname, board, isOpponent, isCurrentTurn, onCellClick }) 
 
 const BattleModule = () => {
     const [playerNicknames, setPlayerNicknames] = useState({ current: '', opponent: '' });
-    const [currentPlayerBoard, setCurrentPlayerBoard] = useState(null);
+    const [currentPlayerBoard, setCurrentPlayerBoard] = useState(Array(10).fill(null).map(() => Array(10).fill(0)));
     const [visibleOpponentBoard, setVisibleOpponentBoard] = useState(Array(10).fill(null).map(() => Array(10).fill(0)));
     const [currentTurn, setCurrentTurn] = useState('');
     const savedNickname = Cookies.get('nickname');
@@ -132,8 +132,25 @@ const BattleModule = () => {
         } else if (data.type === 'currentTurn') {
             setCurrentTurn(data.turn);
         } else if (data.type === 'shotResult') {
-            setVisibleOpponentBoard(data.updatedBoard);
-            setCurrentTurn(data.nextTurn);
+            const { shooterNickname, row, col, hitStatus, nextTurn } = data;
+            
+            if (shooterNickname === savedNickname) {
+                // Обновляем видимую доску оппонента
+                setVisibleOpponentBoard(prevBoard => {
+                    const newBoard = [...prevBoard];
+                    newBoard[row][col] = hitStatus === 'hit' ? 4 : 3;
+                    return newBoard;
+                });
+            } else {
+                // Обновляем свою доску
+                setCurrentPlayerBoard(prevBoard => {
+                    const newBoard = [...prevBoard];
+                    newBoard[row][col] = hitStatus === 'hit' ? 4 : 3;
+                    return newBoard;
+                });
+            }
+            
+            setCurrentTurn(nextTurn);
         }
     };
 
@@ -148,6 +165,7 @@ const BattleModule = () => {
             });
         }
     };
+
 
     return (
         <div className="flex flex-col items-center">

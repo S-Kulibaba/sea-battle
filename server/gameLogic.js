@@ -259,41 +259,47 @@ const shoot = (row, col, roomCode, playerNickname) => {
 
     if (!room) {
         console.error(`Room with code ${roomCode} not found.`);
-        return;
+        return null;
     }
 
-    // Определяем никнейм оппонента
     const opponentNickname = Object.keys(room).find(player => player !== playerNickname);
 
     if (!opponentNickname) {
         console.error('Opponent not found.');
-        return;
+        return null;
     }
 
-    // Получаем доску оппонента и видимую доску игрока
     const opponentBoard = room[opponentNickname].board;
-    const playerVisibleBoard = room[playerNickname].visibleOpponentBoard;
+    const playerVisibleOpponentBoard = room[playerNickname].visibleOpponentBoard;
 
-    // Проверяем значение ячейки на доске оппонента
     const cellValue = opponentBoard[row][col];
 
+    let hitStatus;
     if (cellValue === 0 || cellValue === 2) {
         // Промах
         opponentBoard[row][col] = 3;
-        playerVisibleBoard[row][col] = 3;
-
-        const nextTurn = switchTurn(roomCode, playerNickname);
-        return [playerVisibleBoard, nextTurn];
+        playerVisibleOpponentBoard[row][col] = 3;
+        hitStatus = 'miss';
     } else if (cellValue === 1) {
         // Попадание
         opponentBoard[row][col] = 4;
-        playerVisibleBoard[row][col] = 4;
-        
-        return [playerVisibleBoard, playerNickname]; // Следующий ход остаётся за игроком
+        playerVisibleOpponentBoard[row][col] = 4;
+        hitStatus = 'hit';
     } else {
         console.log(`Invalid shot: Cell already shot at (${row}, ${col}).`);
-        return [playerVisibleBoard];
+        return null;
     }
+
+    const nextTurn = hitStatus === 'hit' ? playerNickname : opponentNickname;
+
+    return {
+        shooterNickname: playerNickname,
+        opponentNickname,
+        row,
+        col,
+        hitStatus,
+        nextTurn
+    };
 };
 
 const getRoom = (roomCode) => {

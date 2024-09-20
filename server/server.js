@@ -80,30 +80,29 @@ server.on('connection', (ws) => {
                 ws.send(JSON.stringify({ type: 'currentTurn', turn: currentTurn }));
             }
         } else if (data.type === 'shoot') {
-            console.log('shooting');
-            console.log('data for shooting', data);
+            console.log('Shooting:', data);
         
-            // Выполняем выстрел
-            const [updatedBoard, nextTurn] = gameLogic.shoot(data.row, data.col, data.roomCode, data.nickname);
+            const shootResult = gameLogic.shoot(data.row, data.col, data.roomCode, data.nickname);
             
-            if (updatedBoard) {
-                // Получаем комнату
+            if (shootResult) {
                 const room = gameLogic.getRoom(data.roomCode);
                 
                 if (room) {
-                    // Получаем список игроков в комнате
                     const playerNicknames = Object.keys(room);
-
+        
                     playerNicknames.forEach(player => {
                         const playerWs = gameLogic.playerConnections[data.roomCode][player];
                         if (playerWs) {
-                            const shootResult = {
+                            const message = {
                                 type: 'shotResult',
-                                updatedBoard,   // Обновленная доска
-                                nextTurn        // Следующий ход (никнейм игрока)
+                                shooterNickname: shootResult.shooterNickname,
+                                row: shootResult.row,
+                                col: shootResult.col,
+                                hitStatus: shootResult.hitStatus,
+                                nextTurn: shootResult.nextTurn
                             };
-
-                            playerWs.send(JSON.stringify(shootResult));  // Отправляем результат выстрела каждому игроку
+        
+                            playerWs.send(JSON.stringify(message));
                         } else {
                             console.error(`Socket not found for player ${player} in room ${data.roomCode}`);
                         }
@@ -112,7 +111,7 @@ server.on('connection', (ws) => {
                     console.error(`Room ${data.roomCode} not found`);
                 }
             } else {
-                console.error('Failed to update board after shoot');
+                console.error('Failed to process shot');
             }
         }
     });
