@@ -15,7 +15,13 @@ const generateRoomCode = () => {
 const createRoom = (nickname, ws) => {
     const roomCode = generateRoomCode();
     rooms[roomCode] = {
-        [nickname]: { token: null, board: null, ready: false, gameStage: 'placing' }
+        [nickname]: { 
+            token: null, 
+            board: null, 
+            visibleOpponentBoard: Array(10).fill().map(() => Array(10).fill(0)),
+            ready: false, 
+            gameStage: 'placing' 
+        }
     };
     playerConnections[roomCode] = {
         [nickname]: ws
@@ -29,7 +35,13 @@ const createRoom = (nickname, ws) => {
 const joinRoom = (roomCode, nickname, ws) => {
     if (rooms[roomCode]) {
         if (!rooms[roomCode][nickname]) {
-            rooms[roomCode][nickname] = { token: null, board: null, ready: false, gameStage: 'placing' };
+            rooms[roomCode][nickname] = { 
+                token: null, 
+                board: null, 
+                visibleOpponentBoard: Array(10).fill().map(() => Array(10).fill(0)),
+                ready: false, 
+                gameStage: 'placing' 
+            };
             playerConnections[roomCode][nickname] = ws;
             console.log(`${nickname} joined room ${roomCode}`);
             console.log(rooms);
@@ -64,21 +76,36 @@ const detectShips = (board) => {
     return ships;
 };
 
-// Функция для запуска игры, когда в комнате два игрока
+// Функция для случайного выбора игрока для первого хода
+const chooseFirstPlayer = (players) => {
+    const randomIndex = Math.floor(Math.random() * players.length);
+    return players[randomIndex];
+};
+
 const startGame = (roomCode) => {
     const players = Object.keys(rooms[roomCode]);
     const token = generateRandomToken();
+
+    // Устанавливаем токен для каждого игрока
     players.forEach(player => {
         rooms[roomCode][player].token = token;
     });
+
+    const firstPlayer = chooseFirstPlayer(players);
+
+    // Сохраняем информацию о первом ходе в комнату
+    // rooms[roomCode][player].turn = firstPlayer;
+
     players.forEach((player) => {
         const ws = playerConnections[roomCode][player];
+        rooms[roomCode][player].turn = firstPlayer;
         if (ws) {
             ws.send(JSON.stringify({ type: 'gameStart', message: 'Game is starting!', players, roomCode, token }));
         }
     });
     console.log(`Game started in room ${roomCode} with players: ${players.join(', ')}. Token: ${token}`);
 };
+
 
 const updateBoard = (roomCode, nickname, token, board) => {
     if (rooms[roomCode] && rooms[roomCode][nickname] && rooms[roomCode][nickname].token === token) {
@@ -95,18 +122,25 @@ const checkBothPlayersReady = (roomCode) => {
     if (players) {
         const allReady = Object.values(players).every(player => player.ready);
         if (allReady) {
-            console.log(`Both players in room ${roomCode} are ready.`);
+            console.log(`Both players in room ${roomCode} are ready. Starting the game.`);
             const playerNicknames = Object.keys(players);
-            Object.keys(players).forEach(player => {
+            
+            // Выбираем первого игрока, если еще не выбран
+            if (!rooms[roomCode].turn) {
+                rooms[roomCode].turn = chooseFirstPlayer(playerNicknames);
+            }
+            
+            playerNicknames.forEach(player => {
                 players[player].gameStage = 'battle';
                 const ws = playerConnections[roomCode][player];
                 if (ws) {
                     ws.send(JSON.stringify({
                         type: 'bothPlayersReady',
-                        message: 'Both players are ready.',
+                        message: 'Both players are ready. Game is starting!',
                         roomCode: roomCode,
                         players: playerNicknames,
-                        gameStage: 'battle'
+                        gameStage: 'battle',
+                        firstPlayer: rooms[roomCode].turn
                     }));
                 }
             });
@@ -178,7 +212,102 @@ const getPlayers = (roomCode) => {
     return null;
 };
 
+const updateVisibleOpponentBoard = (roomCode, nickname, opponentBoard) => {
+    // Проверяем, существует ли комната и игрок с таким ником
+    if (rooms[roomCode] && rooms[roomCode][nickname]) {
+        // Добавляем или обновляем поле visibleOpponentBoard
+        rooms[roomCode][nickname].visibleOpponentBoard = opponentBoard;
+        console.log(`Updated visible opponent board for ${nickname} in room ${roomCode}:`);
+        console.log(opponentBoard);
+        return true;
+    } else {
+        console.error(`Room ${roomCode} or player ${nickname} not found`);
+        return false;
+    }
+};
+
+const getCurrentTurn = (roomCode, nickname) => {
+    if (rooms[roomCode] && rooms[roomCode][nickname]) {
+        const currentTurnPlayer = rooms[roomCode][nickname].turn;
+        console.log(`Current turn in room ${roomCode} belongs to ${currentTurnPlayer}`);
+        return currentTurnPlayer;
+    } else {
+        console.error(`Room ${roomCode} or player ${nickname} not found`);
+        return null;
+    }
+};
+
+
+const switchTurn = (roomCode, nickname) => {
+    const players = Object.keys(rooms[roomCode]);
+
+    // Получаем текущего игрока, который ходит
+    const currentTurnPlayer = rooms[roomCode][nickname].turn;
+
+    // Определяем, кто из игроков не ходит
+    const nextTurnPlayer = players.find(player => player !== currentTurnPlayer);
+
+    // Переключаем ход на другого игрока
+    rooms[roomCode][nickname].turn = nextTurnPlayer;
+
+    console.log(`Turn switched in room ${roomCode}. Now it's ${nextTurnPlayer}'s turn.`);
+    return nextTurnPlayer
+};
+
+const shoot = (row, col, roomCode, playerNickname) => {
+    const room = rooms[roomCode];
+
+    if (!room) {
+        console.error(`Room with code ${roomCode} not found.`);
+        return;
+    }
+
+    // Определяем никнейм оппонента
+    const opponentNickname = Object.keys(room).find(player => player !== playerNickname);
+
+    if (!opponentNickname) {
+        console.error('Opponent not found.');
+        return;
+    }
+
+    // Получаем доску оппонента и видимую доску игрока
+    const opponentBoard = room[opponentNickname].board;
+    const playerVisibleBoard = room[playerNickname].visibleOpponentBoard;
+
+    // Проверяем значение ячейки на доске оппонента
+    const cellValue = opponentBoard[row][col];
+
+    if (cellValue === 0 || cellValue === 2) {
+        // Промах
+        opponentBoard[row][col] = 3;
+        playerVisibleBoard[row][col] = 3;
+
+        const nextTurn = switchTurn(roomCode, playerNickname);
+        return [playerVisibleBoard, nextTurn];
+    } else if (cellValue === 1) {
+        // Попадание
+        opponentBoard[row][col] = 4;
+        playerVisibleBoard[row][col] = 4;
+        
+        return [playerVisibleBoard, playerNickname]; // Следующий ход остаётся за игроком
+    } else {
+        console.log(`Invalid shot: Cell already shot at (${row}, ${col}).`);
+        return [playerVisibleBoard];
+    }
+};
+
+const getRoom = (roomCode) => {
+    if (rooms[roomCode]) {
+        return rooms[roomCode];
+    } else {
+        console.error(`Room with code ${roomCode} not found.`);
+        return null;
+    }
+};
+
+
 module.exports = {
+    playerConnections,
     createRoom,
     joinRoom,
     updateBoard,
@@ -186,5 +315,9 @@ module.exports = {
     getBoard,
     attemptReconnect,
     getGameStage,
-    getPlayers
+    getPlayers,
+    getCurrentTurn,
+    updateVisibleOpponentBoard,
+    shoot,
+    getRoom  // Add the getRoom function here
 };

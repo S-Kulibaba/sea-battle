@@ -63,10 +63,57 @@ server.on('connection', (ws) => {
             } else {
                 ws.send(JSON.stringify({ type: 'error', message: 'Failed to retrieve players. Invalid room.' }));
             } 
-        }  else if (data.type === 'startGame') {
+        } else if (data.type === 'startGame') {
             console.log(`Start game request from ${data.nickname} in room ${data.roomCode}`);
             const firstPlayer = gameLogic.determineFirstTurn(data.roomCode);
             broadcastToRoom(data.roomCode, { type: 'gameStarted', firstPlayer });
+        } else if (data.type === 'sendOpponentBoard') {
+            const visibleOpponentBoard = gameLogic.updateVisibleOpponentBoard(data.roomCode, data.nickname, data.opponentBoard);
+            if (visibleOpponentBoard) {
+                ws.send(JSON.stringify({ type: 'opponentBoardInit', message: "Opponent's board added successfully!" }));
+            } else {
+                ws.send(JSON.stringify({ type: 'error', message: 'Something went wrong with opponent board, data', data }));
+            }
+        } else if (data.type === 'getCurrentTurn') {
+            const currentTurn = gameLogic.getCurrentTurn(data.code, data.nickname);
+            if (currentTurn) {
+                ws.send(JSON.stringify({ type: 'currentTurn', turn: currentTurn }));
+            }
+        } else if (data.type === 'shoot') {
+            console.log('shooting');
+            console.log('data for shooting', data);
+        
+            // Выполняем выстрел
+            const [updatedBoard, nextTurn] = gameLogic.shoot(data.row, data.col, data.roomCode, data.nickname);
+            
+            if (updatedBoard) {
+                // Получаем комнату
+                const room = gameLogic.getRoom(data.roomCode);
+                
+                if (room) {
+                    // Получаем список игроков в комнате
+                    const playerNicknames = Object.keys(room);
+
+                    playerNicknames.forEach(player => {
+                        const playerWs = gameLogic.playerConnections[data.roomCode][player];
+                        if (playerWs) {
+                            const shootResult = {
+                                type: 'shotResult',
+                                updatedBoard,   // Обновленная доска
+                                nextTurn        // Следующий ход (никнейм игрока)
+                            };
+
+                            playerWs.send(JSON.stringify(shootResult));  // Отправляем результат выстрела каждому игроку
+                        } else {
+                            console.error(`Socket not found for player ${player} in room ${data.roomCode}`);
+                        }
+                    });
+                } else {
+                    console.error(`Room ${data.roomCode} not found`);
+                }
+            } else {
+                console.error('Failed to update board after shoot');
+            }
         }
     });
 
