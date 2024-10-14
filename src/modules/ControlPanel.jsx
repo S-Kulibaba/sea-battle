@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { shipsPreset } from '../shipsPreset';
+import { useTranslation } from 'react-i18next';
 
 export function ControlPanel({ setSelectedShip, onReadyClick }) {
+    const { t } = useTranslation();
     const [remainingShips, setRemainingShips] = useState(
         shipsPreset.map(ship => ({ ...ship, remaining: ship.quantity }))
     );
@@ -26,14 +28,14 @@ export function ControlPanel({ setSelectedShip, onReadyClick }) {
                     onClick={() => selectShip(index)}
                     disabled={ship.remaining === 0}
                 >
-                    {ship.name} ({ship.remaining})
+                    {t(`ship_${ship.name.toLowerCase()}`)} ({ship.remaining})
                 </button>
             ))}
             <button
                 className="h-[47px] w-[117px] m-[10px] font-fo btn"
                 onClick={onReadyClick} // Используем переданную функцию
             >
-                Ready!
+                {t('ready')}
             </button>
         </div>
     );
