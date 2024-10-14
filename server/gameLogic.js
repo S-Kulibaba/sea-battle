@@ -1,4 +1,5 @@
 const WebSocket = require('ws');
+const cron = require('node-cron');
 
 // Объект для хранения всех комнат
 const rooms = {};
@@ -11,6 +12,70 @@ const generateRoomCode = () => {
     return Math.floor(1000 + Math.random() * 9000).toString();
 };
 
+// Генерируем токен
+const generateRandomToken = () => {
+    return Math.random().toString(36).substring(2, 10).toUpperCase();
+};
+
+// Функция для обнаружения кораблей
+const detectShips = (board) => {
+    const ships = [];
+    for (let i = 0; i < board.length; i++) {
+        for (let j = 0; j < board[i].length; j++) {
+            if (board[i][j] === 1) {
+                ships.push([i, j]);
+            }
+        }
+    }
+    return ships;
+};
+
+// Функция для случайного выбора игрока для первого хода
+const chooseFirstPlayer = (players) => {
+    const randomIndex = Math.floor(Math.random() * players.length);
+    return players[randomIndex];
+};
+
+// Add a new property to store last activity time for each player in a room
+const updateLastActivity = (roomCode, nickname) => {
+    if (rooms[roomCode] && rooms[roomCode][nickname]) {
+        rooms[roomCode][nickname].lastActivity = Date.now();
+    }
+};
+
+// Modify existing functions to update last activity
+const wrapWithActivityUpdate = (func) => {
+    return (roomCode, nickname, ...args) => {
+        const result = func(roomCode, nickname, ...args);
+        updateLastActivity(roomCode, nickname);
+        return result;
+    };
+};
+
+// Function to clean up inactive rooms
+const cleanupInactiveRooms = () => {
+    const now = Date.now();
+    const inactivityThreshold = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+    Object.keys(rooms).forEach(roomCode => {
+        const room = rooms[roomCode];
+        const players = Object.keys(room);
+        
+        const allInactive = players.every(player => 
+            now - room[player].lastActivity > inactivityThreshold
+        );
+
+        if (allInactive) {
+            console.log(`Removing inactive room: ${roomCode}`);
+            delete rooms[roomCode];
+            delete playerConnections[roomCode];
+        }
+    });
+};
+
+// Schedule the cleanup task to run every 5 minutes
+cron.schedule('*/5 * * * *', cleanupInactiveRooms);
+
 // Функция для создания новой комнаты
 const createRoom = (nickname, ws) => {
     const roomCode = generateRoomCode();
@@ -20,7 +85,8 @@ const createRoom = (nickname, ws) => {
             board: null, 
             visibleOpponentBoard: Array(10).fill().map(() => Array(10).fill(0)),
             ready: false, 
-            gameStage: 'placing' 
+            gameStage: 'placing',
+            lastActivity: Date.now() 
         }
     };
     playerConnections[roomCode] = {
@@ -40,7 +106,8 @@ const joinRoom = (roomCode, nickname, ws) => {
                 board: null, 
                 visibleOpponentBoard: Array(10).fill().map(() => Array(10).fill(0)),
                 ready: false, 
-                gameStage: 'placing' 
+                gameStage: 'placing',
+                lastActivity: Date.now() 
             };
             playerConnections[roomCode][nickname] = ws;
             console.log(`${nickname} joined room ${roomCode}`);
@@ -57,31 +124,6 @@ const joinRoom = (roomCode, nickname, ws) => {
     }
 };
 
-// Генерируем токен
-const generateRandomToken = () => {
-    return Math.random().toString(36).substring(2, 10).toUpperCase();
-};
-
-// Функция для обнаружения кораблей
-
-const detectShips = (board) => {
-    const ships = [];
-    for (let i = 0; i < board.length; i++) {
-        for (let j = 0; j < board[i].length; j++) {
-            if (board[i][j] === 1) {
-                ships.push([i, j]);
-            }
-        }
-    }
-    return ships;
-};
-
-// Функция для случайного выбора игрока для первого хода
-const chooseFirstPlayer = (players) => {
-    const randomIndex = Math.floor(Math.random() * players.length);
-    return players[randomIndex];
-};
-
 const startGame = (roomCode) => {
     const players = Object.keys(rooms[roomCode]);
     const token = generateRandomToken();
@@ -93,9 +135,6 @@ const startGame = (roomCode) => {
 
     const firstPlayer = chooseFirstPlayer(players);
 
-    // Сохраняем информацию о первом ходе в комнату
-    // rooms[roomCode][player].turn = firstPlayer;
-
     players.forEach((player) => {
         const ws = playerConnections[roomCode][player];
         rooms[roomCode][player].turn = firstPlayer;
@@ -105,7 +144,6 @@ const startGame = (roomCode) => {
     });
     console.log(`Game started in room ${roomCode} with players: ${players.join(', ')}. Token: ${token}`);
 };
-
 
 const updateBoard = (roomCode, nickname, token, board) => {
     if (rooms[roomCode] && rooms[roomCode][nickname] && rooms[roomCode][nickname].token === token) {
@@ -166,23 +204,19 @@ const getBoard = (roomCode, nickname, token) => {
     if (rooms[roomCode] && rooms[roomCode][nickname] && rooms[roomCode][nickname].token === token) {
         const board = rooms[roomCode][nickname].board;
         
-        // Проверяем, есть ли доска, и обновляем состояние gameStage на 'battle'
         if (board) {
             rooms[roomCode][nickname].gameStage = 'battle';
-            console.log(`Game stage for ${nickname} in room ${roomCode} set to`);
+            console.log(`Game stage for ${nickname} in room ${roomCode} set to battle`);
         }
         
         console.log(`Sending board for ${nickname} in room ${roomCode}:`);
         const ships = detectShips(board);
         console.log(`Detected ships for ${nickname}:`, ships);
         
-        // Возвращаем доску и текущее состояние gameStage
-        // return { board, gameStage: rooms[roomCode][nickname].gameStage };
         return board;
     }
     return null;
 };
-
 
 const attemptReconnect = (roomCode, nickname, token, ws) => {
     if (rooms[roomCode] && rooms[roomCode][nickname] && rooms[roomCode][nickname].token === token) {
@@ -213,9 +247,7 @@ const getPlayers = (roomCode) => {
 };
 
 const updateVisibleOpponentBoard = (roomCode, nickname, opponentBoard) => {
-    // Проверяем, существует ли комната и игрок с таким ником
     if (rooms[roomCode] && rooms[roomCode][nickname]) {
-        // Добавляем или обновляем поле visibleOpponentBoard
         rooms[roomCode][nickname].visibleOpponentBoard = opponentBoard;
         console.log(`Updated visible opponent board for ${nickname} in room ${roomCode}:`);
         console.log(opponentBoard);
@@ -237,21 +269,13 @@ const getCurrentTurn = (roomCode, nickname) => {
     }
 };
 
-
 const switchTurn = (roomCode, nickname) => {
     const players = Object.keys(rooms[roomCode]);
-
-    // Получаем текущего игрока, который ходит
     const currentTurnPlayer = rooms[roomCode][nickname].turn;
-
-    // Определяем, кто из игроков не ходит
     const nextTurnPlayer = players.find(player => player !== currentTurnPlayer);
-
-    // Переключаем ход на другого игрока
     rooms[roomCode][nickname].turn = nextTurnPlayer;
-
     console.log(`Turn switched in room ${roomCode}. Now it's ${nextTurnPlayer}'s turn.`);
-    return nextTurnPlayer
+    return nextTurnPlayer;
 };
 
 const shoot = (row, col, roomCode, playerNickname) => {
@@ -276,12 +300,10 @@ const shoot = (row, col, roomCode, playerNickname) => {
 
     let hitStatus;
     if (cellValue === 0 || cellValue === 2) {
-        // Промах
         opponentBoard[row][col] = 3;
         playerVisibleOpponentBoard[row][col] = 3;
         hitStatus = 'miss';
     } else if (cellValue === 1) {
-        // Попадание
         opponentBoard[row][col] = 4;
         playerVisibleOpponentBoard[row][col] = 4;
         hitStatus = 'hit';
@@ -311,19 +333,29 @@ const getRoom = (roomCode) => {
     }
 };
 
+// Wrap functions with activity update
+const wrappedJoinRoom = wrapWithActivityUpdate(joinRoom);
+const wrappedUpdateBoard = wrapWithActivityUpdate(updateBoard);
+const wrappedUpdatePlayerReadyStatus = wrapWithActivityUpdate(updatePlayerReadyStatus);
+const wrappedGetBoard = wrapWithActivityUpdate(getBoard);
+const wrappedAttemptReconnect = wrapWithActivityUpdate(attemptReconnect);
+const wrappedGetGameStage = wrapWithActivityUpdate(getGameStage);
+const wrappedUpdateVisibleOpponentBoard = wrapWithActivityUpdate(updateVisibleOpponentBoard);
+const wrappedGetCurrentTurn = wrapWithActivityUpdate(getCurrentTurn);
+const wrappedShoot = wrapWithActivityUpdate(shoot);
 
 module.exports = {
     playerConnections,
     createRoom,
-    joinRoom,
-    updateBoard,
-    updatePlayerReadyStatus,
-    getBoard,
-    attemptReconnect,
-    getGameStage,
+    joinRoom: wrappedJoinRoom,
+    updateBoard: wrappedUpdateBoard,
+    updatePlayerReadyStatus: wrappedUpdatePlayerReadyStatus,
+    getBoard: wrappedGetBoard,
+    attemptReconnect: wrappedAttemptReconnect,
+    getGameStage: wrappedGetGameStage,
     getPlayers,
-    getCurrentTurn,
-    updateVisibleOpponentBoard,
-    shoot,
-    getRoom  // Add the getRoom function here
+    getCurrentTurn: wrappedGetCurrentTurn,
+    updateVisibleOpponentBoard: wrappedUpdateVisibleOpponentBoard,
+    shoot: wrappedShoot,
+    getRoom
 };
