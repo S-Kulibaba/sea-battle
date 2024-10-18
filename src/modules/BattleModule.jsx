@@ -172,7 +172,7 @@ const BattleModule = () => {
 
     return (
         <div className="flex flex-col items-center">
-            <h2 className="text-2xl font-bold mb-4">Sea Battle</h2>
+            <h2 className="text-2xl font-bold mb-4">{t('sea_battle')}</h2>
             <div className="mb-4">
                 {currentTurn === savedNickname ? (
                     <p className="text-green-500 font-bold">{t('your_turn')}</p>
