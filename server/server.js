@@ -83,30 +83,51 @@ server.on('connection', (ws) => {
             console.log('Shooting:', data);
         
             const shootResult = gameLogic.shoot(data.row, data.col, data.roomCode, data.nickname);
-            
+        
             if (shootResult) {
                 const room = gameLogic.getRoom(data.roomCode);
-                
+        
                 if (room) {
                     const playerNicknames = Object.keys(room);
         
-                    playerNicknames.forEach(player => {
-                        const playerWs = gameLogic.playerConnections[data.roomCode][player];
-                        if (playerWs) {
-                            const message = {
-                                type: 'shotResult',
-                                shooterNickname: shootResult.shooterNickname,
-                                row: shootResult.row,
-                                col: shootResult.col,
-                                hitStatus: shootResult.hitStatus,
-                                nextTurn: shootResult.nextTurn
-                            };
+                    // Проверка наличия оставшихся кораблей у противника
+                    const opponentNickname = playerNicknames.find(player => player !== shootResult.shooterNickname);
+                    const opponentBoard = room[opponentNickname].board;
+                    const remainingShips = opponentBoard.flat().includes(1); // Проверяем, есть ли ещё корабли (1)
         
-                            playerWs.send(JSON.stringify(message));
-                        } else {
-                            console.error(`Socket not found for player ${player} in room ${data.roomCode}`);
-                        }
-                    });
+                    if (!remainingShips) {
+                        // Если у противника не осталось кораблей, объявляем победителя
+                        playerNicknames.forEach(player => {
+                            const playerWs = gameLogic.playerConnections[data.roomCode][player];
+                            if (playerWs) {
+                                const message = {
+                                    type: 'gameOver',
+                                    winner: shootResult.shooterNickname,
+                                    loser: opponentNickname
+                                };
+                                playerWs.send(JSON.stringify(message));
+                            }
+                        });
+                    } else {
+                        // Если корабли ещё есть, продолжаем игру
+                        playerNicknames.forEach(player => {
+                            const playerWs = gameLogic.playerConnections[data.roomCode][player];
+                            if (playerWs) {
+                                const message = {
+                                    type: 'shotResult',
+                                    shooterNickname: shootResult.shooterNickname,
+                                    row: shootResult.row,
+                                    col: shootResult.col,
+                                    hitStatus: shootResult.hitStatus,
+                                    nextTurn: shootResult.nextTurn
+                                };
+        
+                                playerWs.send(JSON.stringify(message));
+                            } else {
+                                console.error(`Socket not found for player ${player} in room ${data.roomCode}`);
+                            }
+                        });
+                    }
                 } else {
                     console.error(`Room ${data.roomCode} not found`);
                 }
@@ -114,6 +135,7 @@ server.on('connection', (ws) => {
                 console.error('Failed to process shot');
             }
         }
+        
     });
 
     ws.on('close', () => {

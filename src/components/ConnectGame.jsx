@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { connectToServer, sendMessage, setOnMessageCallback } from "../socket";
+import { connectToServer, sendMessage, addOnMessageCallback } from "../socket";
 import Cookies from "js-cookie";
 import { useTranslation } from "react-i18next"; // Импортируем хук useTranslation
 
@@ -27,11 +27,11 @@ const ConnectGame = () => {
             }
         };
 
-        setOnMessageCallback(handleMessage);
+        addOnMessageCallback(handleMessage);
 
         return () => {
             // Очищаем обработчик сообщений при размонтировании компонента
-            setOnMessageCallback(null);
+            addOnMessageCallback(null);
         };
     }, [navigate]);
 

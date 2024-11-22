@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { connectToServer, sendMessage, setOnMessageCallback } from "../socket";
+import { connectToServer, sendMessage, addOnMessageCallback } from "../socket";
 import Cookies from "js-cookie";
 import { useTranslation } from "react-i18next"; // Импортируем хук useTranslation
 
@@ -38,7 +38,7 @@ const CreateGame = () => {
         };
 
         // Устанавливаем обработчик сообщений
-        setOnMessageCallback(handleMessage);
+        addOnMessageCallback(handleMessage);
 
     }, [navigate]);
 

@@ -1,5 +1,5 @@
 let socket;
-let onMessageCallback;
+let onMessageCallbacks = [];
 let onDisconnectCallback;
 let isConnected = false;
 let messageQueue = [];
@@ -23,9 +23,13 @@ export const connectToServer = () => {
 
         socket.onmessage = (message) => {
             const data = JSON.parse(message.data);
-            if (onMessageCallback) {
-                onMessageCallback(data);
+
+            for (let i = 0; i < onMessageCallbacks.length; i++) {
+                onMessageCallbacks[i](data);
             }
+            // if (onMessageCallbacks.length > 0) {
+            //     onMessageCallbacks(data);
+            // }
             console.log('Message from server: ', message.data);
         };
 
@@ -52,8 +56,10 @@ export const sendMessage = (message) => {
     }
 };
 
-export const setOnMessageCallback = (callback) => {
-    onMessageCallback = callback;
+export const addOnMessageCallback = (callback) => {
+    if (callback != null) {
+        onMessageCallbacks.push(callback);
+    }
 };
 
 export const setOnDisconnectCallback = (callback) => {

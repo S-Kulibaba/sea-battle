@@ -300,11 +300,11 @@ const shoot = (row, col, roomCode, playerNickname) => {
 
     let hitStatus;
     if (cellValue === 0 || cellValue === 2) {
-        opponentBoard[row][col] = 3;
+        opponentBoard[row][col] = 3;  // Mark as missed shot
         playerVisibleOpponentBoard[row][col] = 3;
         hitStatus = 'miss';
     } else if (cellValue === 1) {
-        opponentBoard[row][col] = 4;
+        opponentBoard[row][col] = 4;  // Mark as hit ship
         playerVisibleOpponentBoard[row][col] = 4;
         hitStatus = 'hit';
     } else {
@@ -312,6 +312,25 @@ const shoot = (row, col, roomCode, playerNickname) => {
         return null;
     }
 
+    // Check if opponent has any ships left
+    const opponentHasShips = opponentBoard.some(row => row.includes(1));
+
+    if (!opponentHasShips) {
+        // No ships left, the player has won
+        console.log(`Player ${playerNickname} has won!`);
+        return {
+            shooterNickname: playerNickname,
+            opponentNickname,
+            row,
+            col,
+            hitStatus,
+            nextTurn: null,  // Game ends, no next turn
+            winner: playerNickname,
+            loser: opponentNickname
+        };
+    }
+
+    // If there are still ships left, continue the game
     const nextTurn = hitStatus === 'hit' ? playerNickname : opponentNickname;
 
     return {
@@ -323,6 +342,7 @@ const shoot = (row, col, roomCode, playerNickname) => {
         nextTurn
     };
 };
+
 
 const getRoom = (roomCode) => {
     if (rooms[roomCode]) {

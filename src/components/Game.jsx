@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import ShipPlacement from '../modules/ShipPlacement';
 import BattleModule from '../modules/BattleModule';
-import { connectToServer, getConnectionStatus, setOnMessageCallback, closeConnection, sendMessage, setOnDisconnectCallback } from '../socket';
+import { GameOverModule } from '../modules/GameOverModule';
+import { connectToServer, getConnectionStatus, addOnMessageCallback, closeConnection, sendMessage, setOnDisconnectCallback } from '../socket';
 import { useParams } from 'react-router-dom';
 import Cookies from 'js-cookie';
 
@@ -13,6 +14,7 @@ const Game = () => {
   const [playerNicknames, setPlayerNicknames] = useState([]);
   const [connectionError, setConnectionError] = useState(null);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
+  const [gameOverData, setGameOverData] = useState(null); // Добавлено для хранения данных о завершении игры
 
   const nickname = Cookies.get('nickname');
   const token = Cookies.get('token');
@@ -59,7 +61,7 @@ const Game = () => {
       setupConnection();
     }
 
-    setOnMessageCallback((data) => {
+    addOnMessageCallback((data) => {
       if (data.type === 'bothPlayersReady') {
         setPlayerNicknames(data.players);
         setGameStage('battle');
@@ -67,6 +69,12 @@ const Game = () => {
         setGameStage(data.gameStage);
       } else if (data.type === 'error') {
         setConnectionError(data.message);
+      } else if (data.type === 'gameOver') {
+        setGameStage(data.type);
+        setGameOverData({
+          winner: data.winner,
+          loser: data.loser,
+        }); // Сохраняем данные о победителе и проигравшем
       }
     });
 
@@ -86,10 +94,13 @@ const Game = () => {
   }, [isConnected, reconnectAttempts, code, nickname, token]);
 
   return (
-    <div className=' h-screen w-screen flex items-center justify-center'>
+    <div className='h-screen w-screen flex items-center justify-center'>
       {connectionError && <div className="error">{connectionError}</div>}
       {gameStage === 'placing' && !connectionError && <ShipPlacement />}
       {gameStage === 'battle' && <BattleModule />}
+      {gameStage === 'gameOver' && gameOverData && (
+        <GameOverModule result={gameOverData} />
+      )}
     </div>
   );
 };

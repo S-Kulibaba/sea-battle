@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Cookies from "js-cookie";
-import { sendMessage, setOnMessageCallback } from "../socket";
+import { sendMessage, addOnMessageCallback } from "../socket";
 import { useTranslation } from "react-i18next";
 
 const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
@@ -44,6 +44,7 @@ const GameBoard = ({ nickname, board, isOpponent, isCurrentTurn, onCellClick }) 
                     </div>
                     {letters.map((letter, colIndex) => (
                         <div
+                            role="button"
                             key={`${letter}${number}`}
                             className={`w-10 h-10 border border-black flex justify-center items-center ${getCellColor(board[rowIndex][colIndex])} ${isOpponent && isCurrentTurn ? 'cursor-pointer' : 'cursor-not-allowed'}`}
                             onClick={() => isOpponent && isCurrentTurn && onCellClick(rowIndex, colIndex)}
@@ -115,9 +116,9 @@ const BattleModule = () => {
             roomCode,
             nickname: savedNickname,
         });
-        setOnMessageCallback(handleMessage);
+        addOnMessageCallback(handleMessage);
 
-        return () => setOnMessageCallback(null);
+        return () => addOnMessageCallback(null);
     }, [savedNickname, roomCode]);
 
     const handleMessage = (data) => {
