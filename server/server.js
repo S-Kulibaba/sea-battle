@@ -1,9 +1,30 @@
 const WebSocket = require("ws");
+const https = require("https");
+const fs = require("fs");
 const gameLogic = require("./src/gameLogic");
 
-const server = new WebSocket.Server({ port: 8080 });
+// Создаём самоподписанный сертификат или используем существующий
+const options = {
+  key: fs.readFileSync("key.pem"),
+  cert: fs.readFileSync("cert.pem"),
+};
 
-server.on("connection", (ws) => {
+// Создаём HTTP сервер с SSL
+const httpsServer = https.createServer(options);
+
+// Создаём WS сервер без SSL для локальной разработки
+const wsServer = new WebSocket.Server({ port: 8080 });
+
+// Создаём WSS сервер с SSL
+const wssServer = new WebSocket.Server({
+  server: httpsServer,
+});
+
+// Запускаем HTTPS сервер на порту 8443
+httpsServer.listen(8443);
+
+// Функция для обработки соединений - одинаковая для обоих серверов
+function handleConnection(ws) {
   console.log("Client connected");
 
   ws.on("message", (message) => {
@@ -162,7 +183,7 @@ server.on("connection", (ws) => {
         ws.send(
           JSON.stringify({
             type: "error",
-            message: "Something went wrong with opponent board, data",
+            message: "Something went wrong with opponent board",
             data,
           })
         );
@@ -187,16 +208,13 @@ server.on("connection", (ws) => {
 
         if (room) {
           const playerNicknames = Object.keys(room);
-
-          // Проверка наличия оставшихся кораблей у противника
           const opponentNickname = playerNicknames.find(
             (player) => player !== shootResult.shooterNickname
           );
           const opponentBoard = room[opponentNickname].board;
-          const remainingShips = opponentBoard.flat().includes(1); // Проверяем, есть ли ещё корабли (1)
+          const remainingShips = opponentBoard.flat().includes(1);
 
           if (!remainingShips) {
-            // Если у противника не осталось кораблей, объявляем победителя
             playerNicknames.forEach((player) => {
               const playerWs =
                 gameLogic.playerConnections[data.roomCode][player];
@@ -210,7 +228,6 @@ server.on("connection", (ws) => {
               }
             });
           } else {
-            // Если корабли ещё есть, продолжаем игру
             playerNicknames.forEach((player) => {
               const playerWs =
                 gameLogic.playerConnections[data.roomCode][player];
@@ -223,7 +240,6 @@ server.on("connection", (ws) => {
                   hitStatus: shootResult.hitStatus,
                   nextTurn: shootResult.nextTurn,
                 };
-
                 playerWs.send(JSON.stringify(message));
               } else {
                 console.error(
@@ -244,6 +260,12 @@ server.on("connection", (ws) => {
   ws.on("close", () => {
     console.log("Client disconnected");
   });
-});
+}
 
-console.log("WebSocket server is running on ws://localhost:8080");
+// Применяем обработчик к обоим серверам
+wsServer.on("connection", handleConnection);
+wssServer.on("connection", handleConnection);
+
+console.log("WebSocket servers running on:");
+console.log("ws://localhost:8080 (unsecure)");
+console.log("wss://localhost:8443 (secure)");
