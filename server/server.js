@@ -10,18 +10,18 @@ const options = {
 };
 
 // Создаём HTTP сервер с SSL
-const httpsServer = https.createServer(options);
+// const httpsServer = https.createServer(options);
 
 // Создаём WS сервер без SSL для локальной разработки
-const wsServer = new WebSocket.Server({ port: 8080 });
+const wsServer = new WebSocket.Server({ port: 8443 });
 
 // Создаём WSS сервер с SSL
-const wssServer = new WebSocket.Server({
-  server: httpsServer,
-});
+// const wssServer = new WebSocket.Server({
+//   server: httpsServer,
+// });
 
 // Запускаем HTTPS сервер на порту 8443
-httpsServer.listen(8443);
+// httpsServer.listen(8443);
 
 // Функция для обработки соединений - одинаковая для обоих серверов
 function handleConnection(ws) {
@@ -264,7 +264,7 @@ function handleConnection(ws) {
 
 // Применяем обработчик к обоим серверам
 wsServer.on("connection", handleConnection);
-wssServer.on("connection", handleConnection);
+// wssServer.on("connection", handleConnection);
 
 console.log("WebSocket servers running on:");
 console.log("ws://localhost:8080 (unsecure)");
