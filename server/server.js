@@ -264,7 +264,7 @@ function handleConnection(ws) {
 
 // Применяем обработчик к обоим серверам
 wsServer.on("connection", handleConnection);
-// wssServer.on("connection", handleConnection);
+wssServer.on("connection", handleConnection);
 
 console.log("WebSocket servers running on:");
 console.log("ws://localhost:8080 (unsecure)");
