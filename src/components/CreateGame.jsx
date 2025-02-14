@@ -30,7 +30,6 @@ const CreateGame = () => {
             }
 
             if (data.type === 'gameStart' && data.token) {
-                console.log('Navigating to game with room code: ', data.roomCode, "token", data.token);
                 Cookies.set('token', data.token, { expires: 7 }); // Устанавливаем куки на 7 дней
                 Cookies.set('roomCode', data.roomCode, { expires: 7 });
                 navigate(`/game/${data.roomCode}`);

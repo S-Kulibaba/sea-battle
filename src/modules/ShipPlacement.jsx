@@ -127,7 +127,6 @@ const ShipPlacement = () => {
         const nickname = Cookies.get('nickname');
         const token = Cookies.get('token');
         const code = Cookies.get('roomCode');
-        console.log('sent ships:', field);
         sendMessage({
             type: 'boardUpdate',
             code,

@@ -17,7 +17,6 @@ const MainMenu = () => {
 
   const handleSaveNickname = (nickname) => {
     Cookies.set('nickname', nickname, { expires: 7 }); // Устанавливаем куки на 7 дней
-    console.log('Nickname saved in cookies:', nickname);
     setIsNicknameSet(true);
   };
 

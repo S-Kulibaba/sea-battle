@@ -75,7 +75,6 @@ const BattleModule = () => {
                 nickname,
                 token,
             });
-            console.log(`Requesting board for player: ${nickname}`);
         } else {
             console.error('No token or room code found in cookies');
         }
@@ -91,7 +90,6 @@ const BattleModule = () => {
                 nickname: savedNickname,
                 token,
             });
-            console.log('Requesting visible opponent board');
         } else {
             console.error('No token, room code, or nickname found in cookies');
         }
@@ -104,7 +102,6 @@ const BattleModule = () => {
                 code: roomCode,
                 nickname: savedNickname,
             });
-            console.log('Requesting current turn');
         } else {
             console.error('No nickname or room code found in cookies');
         }
