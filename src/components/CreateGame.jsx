@@ -30,7 +30,6 @@ const CreateGame = () => {
             }
 
             if (data.type === 'gameStart' && data.token) {
-                console.log('Navigating to game with room code: ', data.roomCode, "token", data.token);
                 Cookies.set('token', data.token, { expires: 7 }); // Устанавливаем куки на 7 дней
                 Cookies.set('roomCode', data.roomCode, { expires: 7 });
                 navigate(`/game/${data.roomCode}`);
@@ -43,15 +42,10 @@ const CreateGame = () => {
     }, [navigate]);
 
     const copyCode = () => {
-        const textArea = document.createElement("textarea");
-        textArea.value = roomCode;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textArea);
-    
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        navigator.clipboard.writeText(roomCode).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        });
     };
 
     const goBack = () => {
