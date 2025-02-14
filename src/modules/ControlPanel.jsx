@@ -19,6 +19,8 @@ export function ControlPanel({ setSelectedShip, onReadyClick }) {
         }
     };
 
+    const isReadyDisabled = remainingShips.some(ship => ship.remaining > 0);
+
     return (
         <div className="flex mt-5 space-x-4">
             {remainingShips.map((ship, index) => (
@@ -33,7 +35,8 @@ export function ControlPanel({ setSelectedShip, onReadyClick }) {
             ))}
             <button
                 className="h-[47px] w-[117px] m-[10px] font-fo btn"
-                onClick={onReadyClick} // Используем переданную функцию
+                onClick={onReadyClick}
+                disabled={isReadyDisabled}
             >
                 {t('ready')}
             </button>

@@ -1,16 +1,16 @@
 export const shipsPreset = [
   {
-    name: "Battleship", // Линкор
+    name: "Battleship",
     size: 4,
     quantity: 1,
   },
   {
-    name: "Cruiser", // Крейсер
+    name: "Cruiser",
     size: 3,
     quantity: 2,
   },
   {
-    name: "Destroyer", // Эсминец
+    name: "Destroyer",
     size: 2,
     quantity: 3,
   },
